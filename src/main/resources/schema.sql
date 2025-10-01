@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS reactions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   link_id INTEGER NOT NULL,
   user_id INTEGER NOT NULL,
-  reaction INTEGER NOT NULL, -- -1, 0, +1 (we will not store 0, but column is int)
+  reaction INTEGER NOT NULL,
   CONSTRAINT ux_user_link UNIQUE(user_id, link_id),
   FOREIGN KEY(link_id) REFERENCES links(id) ON DELETE CASCADE,
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE

@@ -1,0 +1,10 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: spring-sqlite-app
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./data:/app/data
