@@ -13,6 +13,8 @@ import org.springframework.http.HttpStatus;
 
 import com.smotrilka.repository.DatabaseJdbc;
 
+import java.util.Map;
+
 
 @RestController
 @RequestMapping
@@ -32,6 +34,11 @@ public class ApiController {
         boolean ok = db.registerUser(request);
         return ok ? ResponseEntity.ok("User registered")
                 : ResponseEntity.status(409).body("User already exists");
+    }
+    @PostMapping("/check-username")
+    public ResponseEntity<?> checkUsername(@RequestParam String login) {
+        boolean taken = db.isUsernameTaken(login);
+        return ResponseEntity.ok(Map.of("taken", taken));
     }
 
     @PostMapping("/link")

@@ -1,7 +1,7 @@
 
 FROM maven:3.9.6-eclipse-temurin-21 AS builder
 WORKDIR /build
-
+COPY settings.xml /root/.m2/settings.xml
 COPY pom.xml .
 RUN mvn -B -DskipTests dependency:go-offline
 

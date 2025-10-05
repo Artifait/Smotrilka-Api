@@ -42,23 +42,78 @@ public class DatabaseJdbc {
         }
     }
 
+    @Transactional
     public boolean addLink(LinkRequest request) {
         try {
-            Integer cnt = jdbc.queryForObject(
-                    "SELECT COUNT(1) FROM users WHERE login = ? AND password = ?",
-                    Integer.class, request.getLogin(), request.getPassword()
-            );
-            if (cnt == null || cnt == 0) {
+            if (request == null ||
+                    request.getLogin() == null || request.getPassword() == null ||
+                    request.getName() == null || request.getLink() == null ||
+                    request.getType() == null) {
+                log.warn("addLink: missing fields");
                 return false;
             }
 
-            jdbc.update("INSERT INTO links(name, type, link, rating) VALUES(?, ?, ?, ?)",
-                    request.getName(), request.getType(), request.getLink(), 0);
+            Integer userId = jdbc.query(
+                    "SELECT id FROM users WHERE login = ? AND password = ?",
+                    (rs, rowNum) -> rs.getInt("id"),
+                    request.getLogin(), request.getPassword()
+            ).stream().findFirst().orElse(null);
 
-            log.info("Link '{}' added by {}", request.getName(), request.getLogin());
+            if (userId == null) {
+                log.warn("addLink: invalid credentials for {}", request.getLogin());
+                return false;
+            }
+
+            Integer typeId = jdbc.query(
+                    "SELECT id FROM link_types WHERE type_name = ?",
+                    (rs, rowNum) -> rs.getInt("id"),
+                    request.getType()
+            ).stream().findFirst().orElse(null);
+
+            if (typeId == null) {
+                jdbc.update("INSERT INTO link_types(type_name) VALUES(?)", request.getType());
+                typeId = jdbc.queryForObject(
+                        "SELECT id FROM link_types WHERE type_name = ?",
+                        Integer.class, request.getType()
+                );
+                log.info("New link type created: {}", request.getType());
+            }
+
+            jdbc.update("INSERT INTO links(name, link, rating) VALUES(?, ?, 0)",
+                    request.getName(), request.getLink());
+
+            Integer linkId = jdbc.queryForObject("SELECT last_insert_rowid()", Integer.class);
+
+            jdbc.update("INSERT INTO link_type_relations(link_id, type_id) VALUES(?, ?)",
+                    linkId, typeId);
+
+            log.info("Link '{}' added by {} (type '{}')", request.getName(), request.getLogin(), request.getType());
             return true;
+
         } catch (Exception e) {
             log.error("addLink failed for {}", request == null ? "null" : request.getLogin(), e);
+            throw e;
+        }
+    }
+
+    public boolean isUsernameTaken(String login) {
+        try {
+            if (login == null || login.trim().isEmpty()) {
+                log.warn("isUsernameTaken called with empty login");
+                return true; // считаем пустое имя "занятым", чтобы не пропустить ошибку
+            }
+
+            Integer cnt = jdbc.queryForObject(
+                    "SELECT COUNT(1) FROM users WHERE login = ?",
+                    Integer.class, login
+            );
+
+            boolean taken = cnt != null && cnt > 0;
+            log.info("Checked username '{}': {}", login, taken ? "taken" : "available");
+            return taken;
+
+        } catch (Exception e) {
+            log.error("isUsernameTaken failed for {}", login, e);
             throw e;
         }
     }
