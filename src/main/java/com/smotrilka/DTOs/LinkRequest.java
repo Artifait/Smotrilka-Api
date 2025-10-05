@@ -1,11 +1,13 @@
 package com.smotrilka.DTOs;
 
+import java.util.List;
+
 public class LinkRequest {
     private String login;
     private String password;
     private String name;
-    private String type;
     private String link;
+    private List<String> tags; // заменяем "type" на список тегов
 
     public LinkRequest() {}
 
@@ -18,9 +20,9 @@ public class LinkRequest {
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
-    public String getType() { return type; }
-    public void setType(String type) { this.type = type; }
-
     public String getLink() { return link; }
     public void setLink(String link) { this.link = link; }
+
+    public List<String> getTags() { return tags; }
+    public void setTags(List<String> tags) { this.tags = tags; }
 }

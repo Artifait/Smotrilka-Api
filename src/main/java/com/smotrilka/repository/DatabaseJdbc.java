@@ -45,54 +45,71 @@ public class DatabaseJdbc {
     @Transactional
     public boolean addLink(LinkRequest request) {
         try {
-            if (request == null ||
-                    request.getLogin() == null || request.getPassword() == null ||
-                    request.getName() == null || request.getLink() == null ||
-                    request.getType() == null) {
-                log.warn("addLink: missing fields");
-                return false;
+            if (request == null) {
+                throw new IllegalArgumentException("Request is null");
             }
 
-            Integer userId = jdbc.query(
+            // 1. Проверка авторизации пользователя
+            List<Integer> ulist = jdbc.query(
                     "SELECT id FROM users WHERE login = ? AND password = ?",
                     (rs, rowNum) -> rs.getInt("id"),
                     request.getLogin(), request.getPassword()
-            ).stream().findFirst().orElse(null);
-
-            if (userId == null) {
-                log.warn("addLink: invalid credentials for {}", request.getLogin());
+            );
+            if (ulist.isEmpty()) {
+                log.warn("Invalid credentials for user {}", request.getLogin());
                 return false;
             }
+            Integer userId = ulist.get(0);
 
-            Integer typeId = jdbc.query(
-                    "SELECT id FROM link_types WHERE type_name = ?",
-                    (rs, rowNum) -> rs.getInt("id"),
-                    request.getType()
-            ).stream().findFirst().orElse(null);
-
-            if (typeId == null) {
-                jdbc.update("INSERT INTO link_types(type_name) VALUES(?)", request.getType());
-                typeId = jdbc.queryForObject(
-                        "SELECT id FROM link_types WHERE type_name = ?",
-                        Integer.class, request.getType()
-                );
-                log.info("New link type created: {}", request.getType());
+            // 2. Проверка и ограничение количества тегов
+            List<String> tags = request.getTags();
+            if (tags == null || tags.isEmpty()) {
+                throw new IllegalArgumentException("At least one tag required");
+            }
+            if (tags.size() > 10) {
+                throw new IllegalArgumentException("Too many tags (max 10)");
             }
 
+            // 3. Добавляем новую ссылку
             jdbc.update("INSERT INTO links(name, link, rating) VALUES(?, ?, 0)",
                     request.getName(), request.getLink());
 
+            // Получаем ID добавленной ссылки
             Integer linkId = jdbc.queryForObject("SELECT last_insert_rowid()", Integer.class);
 
-            jdbc.update("INSERT INTO link_type_relations(link_id, type_id) VALUES(?, ?)",
-                    linkId, typeId);
+            // 4. Добавляем / находим теги и создаём связи
+            for (String rawTag : tags) {
+                String tag = rawTag == null ? "" : rawTag.trim();
+                if (tag.isEmpty()) continue;
 
-            log.info("Link '{}' added by {} (type '{}')", request.getName(), request.getLogin(), request.getType());
+                // Проверяем, есть ли уже такой тег
+                List<Integer> tagIds = jdbc.query(
+                        "SELECT id FROM link_tags WHERE type_name = ?",
+                        (rs, rowNum) -> rs.getInt("id"),
+                        tag
+                );
+
+                Integer tagId;
+                if (tagIds.isEmpty()) {
+                    // создаём новый тег
+                    jdbc.update("INSERT INTO link_tags(type_name) VALUES(?)", tag);
+                    tagId = jdbc.queryForObject("SELECT last_insert_rowid()", Integer.class);
+                } else {
+                    tagId = tagIds.get(0);
+                }
+
+                // создаём связь ссылка ↔ тег, если её ещё нет
+                jdbc.update("INSERT OR IGNORE INTO link_tag_relations(link_id, type_id) VALUES(?, ?)",
+                        linkId, tagId);
+            }
+
+            log.info("Link '{}' added by {} with {} tag(s)",
+                    request.getName(), request.getLogin(), tags.size());
             return true;
 
         } catch (Exception e) {
-            log.error("addLink failed for {}", request == null ? "null" : request.getLogin(), e);
-            throw e;
+            log.error("addLink failed for {}", request == null ? "null" : request.getName(), e);
+            throw e; // транзакция откатится автоматически
         }
     }
 

@@ -44,14 +44,26 @@ public class ApiController {
     @PostMapping("/link")
     public ResponseEntity<?> addLink(@RequestBody LinkRequest request) {
         if (request.getLogin() == null || request.getPassword() == null ||
-                request.getName() == null || request.getType() == null || request.getLink() == null) {
-            return ResponseEntity.badRequest().body("All fields required");
+                request.getName() == null || request.getLink() == null ||
+                request.getTags() == null || request.getTags().isEmpty()) {
+            return ResponseEntity.badRequest().body("All fields required (login, password, name, link, tags)");
+        }
+
+        if (request.getTags().size() > 10) {
+            return ResponseEntity.badRequest().body("Maximum 10 tags allowed");
         }
 
         boolean ok = db.addLink(request);
-        return ok ? ResponseEntity.ok("Link added")
-                : ResponseEntity.status(403).body("Invalid credentials");
+
+        if (ok) {
+            log.info("Link '{}' added successfully by user '{}'", request.getName(), request.getLogin());
+            return ResponseEntity.ok("Link added");
+        } else {
+            log.warn("Invalid credentials for user '{}'", request.getLogin());
+            return ResponseEntity.status(403).body("Invalid credentials");
+        }
     }
+
 
     @PostMapping("/react")
     public ResponseEntity<?> react(@RequestBody ReactionRequest request) {
