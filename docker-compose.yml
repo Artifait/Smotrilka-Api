@@ -1,9 +1,8 @@
-version: "3.9"
 
 services:
   app:
     build: .
-    container_name: spring-sqlite-app
+    container_name: smotrilka-api
     ports:
       - "9090:9090"
     volumes:

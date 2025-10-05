@@ -43,9 +43,8 @@ jobs:
             IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/smotrilka
             TAG=latest
             TARGET_DIR="/home/${{ secrets.SERVER_SSH_USER }}/smotrilka"
-            DATA_DIR="$TARGET_DIR/data"
 
-            mkdir -p "$DATA_DIR"
+            mkdir -p "$TARGET_DIR"
 
             docker pull $IMAGE:$TAG
 
@@ -56,7 +55,7 @@ jobs:
               --name smotrilka-app \
               --restart=always \
               -p 9090:9090 \
-              -v "$DATA_DIR":/app/data \
+              -v "$TARGET_DIR/demo.db":/app/demo.db \
               $IMAGE:$TAG
 
             docker ps --filter "name=smotrilka-app" --format "table  {{.Names}}\t{{.Image}}\t{{.Ports}}"
