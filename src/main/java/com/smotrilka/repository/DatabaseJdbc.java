@@ -4,6 +4,7 @@ package com.smotrilka.repository;
 import com.smotrilka.DTOs.LinkRequest;
 import com.smotrilka.DTOs.RegisterRequest;
 import com.smotrilka.DTOs.ReactionRequest;
+import com.smotrilka.DTOs.SearchResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -40,6 +41,64 @@ public class DatabaseJdbc {
             log.error("registerUser failed for {}", request == null ? "null" : request.getLogin(), e);
             throw e;
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<SearchResponse> searchLinks(String query) {
+        String q = query == null ? "" : query.trim().toLowerCase();
+        if (q.isEmpty()) {
+            // если запрос пустой — возвращаем все ссылки
+            String sqlAll = """
+            SELECT l.id, l.name, l.link, l.rating
+            FROM links l
+        """;
+            return jdbc.query(sqlAll, (rs, rowNum) -> {
+                int linkId = rs.getInt("id");
+                List<String> tags = jdbc.query(
+                        "SELECT t.type_name FROM link_tags t " +
+                                "JOIN link_tag_relations r ON r.type_id = t.id " +
+                                "WHERE r.link_id = ?",
+                        (r2, i2) -> r2.getString("type_name"), linkId
+                );
+                return new SearchResponse(
+                        linkId,
+                        rs.getString("name"),
+                        rs.getString("link"),
+                        rs.getInt("rating"),
+                        tags
+                );
+            });
+        }
+
+        // поиск по подстроке в названии или тегах
+        String like = "%" + q + "%";
+
+        String sql = """
+        SELECT DISTINCT l.id, l.name, l.link, l.rating
+        FROM links l
+        LEFT JOIN link_tag_relations r ON r.link_id = l.id
+        LEFT JOIN link_tags t ON t.id = r.type_id
+        WHERE LOWER(l.name) LIKE ? OR LOWER(t.type_name) LIKE ?
+        """;
+
+        List<SearchResponse> results = jdbc.query(sql, (rs, rowNum) -> {
+            int linkId = rs.getInt("id");
+            List<String> tags = jdbc.query(
+                    "SELECT t.type_name FROM link_tags t " +
+                            "JOIN link_tag_relations r ON r.type_id = t.id " +
+                            "WHERE r.link_id = ?",
+                    (r2, i2) -> r2.getString("type_name"), linkId
+            );
+            return new SearchResponse(
+                    linkId,
+                    rs.getString("name"),
+                    rs.getString("link"),
+                    rs.getInt("rating"),
+                    tags
+            );
+        }, like, like);
+
+        return results;
     }
 
     @Transactional

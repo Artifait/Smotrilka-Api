@@ -26,6 +26,13 @@ public class ApiController {
         this.db = db;
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<?> search(@RequestParam String q) {
+        if (q == null) q = "";
+        var results = db.searchLinks(q);
+        return ResponseEntity.ok(results);
+    }
+
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
         if (request.getLogin() == null || request.getPassword() == null) {
