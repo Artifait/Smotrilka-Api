@@ -47,7 +47,6 @@ public class DatabaseJdbc {
     public List<SearchResponse> searchLinks(String query) {
         String q = query == null ? "" : query.trim().toLowerCase();
         if (q.isEmpty()) {
-            // если запрос пустой — возвращаем все ссылки
             String sqlAll = """
             SELECT l.id, l.name, l.link, l.rating
             FROM links l
@@ -70,7 +69,6 @@ public class DatabaseJdbc {
             });
         }
 
-        // поиск по подстроке в названии или тегах
         String like = "%" + q + "%";
 
         String sql = """
@@ -102,13 +100,56 @@ public class DatabaseJdbc {
     }
 
     @Transactional
+    public boolean addFavorite(int userId, int linkId) {
+        try {
+            String sql = "INSERT INTO favorite_links (user_id, link_id) VALUES (?, ?)";
+            jdbc.update(sql, userId, linkId);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Transactional
+    public boolean removeFavorite(int userId, int linkId) {
+        String sql = "DELETE FROM favorite_links WHERE user_id = ? AND link_id = ?";
+        return jdbc.update(sql, userId, linkId) > 0;
+    }
+
+    @Transactional(readOnly = true)
+    public List<SearchResponse> getFavorites(int userId) {
+        String sql = """
+        SELECT l.id, l.name, l.link, l.rating
+        FROM links l
+        JOIN favorite_links f ON f.link_id = l.id
+        WHERE f.user_id = ?
+        """;
+
+        return jdbc.query(sql, (rs, rowNum) -> {
+            int linkId = rs.getInt("id");
+            List<String> tags = jdbc.query(
+                    "SELECT t.type_name FROM link_tags t " +
+                            "JOIN link_tag_relations r ON r.type_id = t.id " +
+                            "WHERE r.link_id = ?",
+                    (r2, i2) -> r2.getString("type_name"), linkId
+            );
+            return new SearchResponse(
+                    linkId,
+                    rs.getString("name"),
+                    rs.getString("link"),
+                    rs.getInt("rating"),
+                    tags
+            );
+        }, userId);
+    }
+
+    @Transactional
     public boolean addLink(LinkRequest request) {
         try {
             if (request == null) {
                 throw new IllegalArgumentException("Request is null");
             }
 
-            // 1. Проверка авторизации пользователя
             List<Integer> ulist = jdbc.query(
                     "SELECT id FROM users WHERE login = ? AND password = ?",
                     (rs, rowNum) -> rs.getInt("id"),
@@ -120,7 +161,6 @@ public class DatabaseJdbc {
             }
             Integer userId = ulist.get(0);
 
-            // 2. Проверка и ограничение количества тегов
             List<String> tags = request.getTags();
             if (tags == null || tags.isEmpty()) {
                 throw new IllegalArgumentException("At least one tag required");
@@ -129,19 +169,15 @@ public class DatabaseJdbc {
                 throw new IllegalArgumentException("Too many tags (max 10)");
             }
 
-            // 3. Добавляем новую ссылку
             jdbc.update("INSERT INTO links(name, link, rating) VALUES(?, ?, 0)",
                     request.getName(), request.getLink());
 
-            // Получаем ID добавленной ссылки
             Integer linkId = jdbc.queryForObject("SELECT last_insert_rowid()", Integer.class);
 
-            // 4. Добавляем / находим теги и создаём связи
             for (String rawTag : tags) {
                 String tag = rawTag == null ? "" : rawTag.trim();
                 if (tag.isEmpty()) continue;
 
-                // Проверяем, есть ли уже такой тег
                 List<Integer> tagIds = jdbc.query(
                         "SELECT id FROM link_tags WHERE type_name = ?",
                         (rs, rowNum) -> rs.getInt("id"),
@@ -150,14 +186,12 @@ public class DatabaseJdbc {
 
                 Integer tagId;
                 if (tagIds.isEmpty()) {
-                    // создаём новый тег
                     jdbc.update("INSERT INTO link_tags(type_name) VALUES(?)", tag);
                     tagId = jdbc.queryForObject("SELECT last_insert_rowid()", Integer.class);
                 } else {
                     tagId = tagIds.get(0);
                 }
 
-                // создаём связь ссылка ↔ тег, если её ещё нет
                 jdbc.update("INSERT OR IGNORE INTO link_tag_relations(link_id, type_id) VALUES(?, ?)",
                         linkId, tagId);
             }
@@ -168,7 +202,7 @@ public class DatabaseJdbc {
 
         } catch (Exception e) {
             log.error("addLink failed for {}", request == null ? "null" : request.getName(), e);
-            throw e; // транзакция откатится автоматически
+            throw e;
         }
     }
 

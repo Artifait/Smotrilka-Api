@@ -22,6 +22,31 @@ public class ApiController {
     private final DatabaseJdbc db;
     private final Logger log = LoggerFactory.getLogger(getClass());
 
+    @PostMapping("/favorites/add")
+    public ResponseEntity<?> addFavorite(@RequestParam int userId, @RequestParam int linkId) {
+        boolean added = db.addFavorite(userId, linkId);
+        if (added) {
+            return ResponseEntity.ok("Link added to favorites");
+        } else {
+            return ResponseEntity.badRequest().body("Link already in favorites or invalid data");
+        }
+    }
+
+    @DeleteMapping("/favorites/remove")
+    public ResponseEntity<?> removeFavorite(@RequestParam int userId, @RequestParam int linkId) {
+        boolean removed = db.removeFavorite(userId, linkId);
+        if (removed) {
+            return ResponseEntity.ok("Link removed from favorites");
+        } else {
+            return ResponseEntity.badRequest().body("Link not found in favorites");
+        }
+    }
+
+    @GetMapping("/favorites")
+    public ResponseEntity<?> getFavorites(@RequestParam int userId) {
+        var favorites = db.getFavorites(userId);
+        return ResponseEntity.ok(favorites);
+    }
     public ApiController(DatabaseJdbc db) {
         this.db = db;
     }
