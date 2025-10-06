@@ -210,8 +210,10 @@ public class DatabaseJdbc {
                 throw new IllegalArgumentException("Too many tags (max 10)");
             }
 
-            jdbc.update("INSERT INTO links(name, link, rating) VALUES(?, ?, 0)",
-                    request.getName(), request.getLink());
+            jdbc.update(
+                    "INSERT INTO links(name, link, description, rating) VALUES(?, ?, ?, 0)",
+                    request.getName(), request.getLink(), request.getDescription()
+            );
 
             Integer linkId = jdbc.queryForObject("SELECT last_insert_rowid()", Integer.class);
 
@@ -237,8 +239,7 @@ public class DatabaseJdbc {
                         linkId, tagId);
             }
 
-            log.info("Link '{}' added by {} with {} tag(s)",
-                    request.getName(), request.getLogin(), tags.size());
+            log.info("Link '{}' added by {} with {} tag(s)", request.getName(), request.getLogin(), tags.size());
             return true;
 
         } catch (Exception e) {

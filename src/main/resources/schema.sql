@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS links (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         link TEXT NOT NULL,
+        description TEXT,
         rating INTEGER NOT NULL DEFAULT 0
 );
 

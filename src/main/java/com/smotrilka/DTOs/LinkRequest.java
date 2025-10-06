@@ -7,8 +7,8 @@ public class LinkRequest {
     private String password;
     private String name;
     private String link;
-    private List<String> tags; // заменяем "type" на список тегов
-
+    private List<String> tags;
+    private String description;
     public LinkRequest() {}
 
     public String getLogin() { return login; }
@@ -25,4 +25,8 @@ public class LinkRequest {
 
     public List<String> getTags() { return tags; }
     public void setTags(List<String> tags) { this.tags = tags; }
+
+    public String getDescription() {return description;}
+
+    public void setDescription(String description) {this.description = description;}
 }
