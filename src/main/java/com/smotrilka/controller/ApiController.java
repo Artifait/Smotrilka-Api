@@ -2,7 +2,9 @@ package com.smotrilka.controller;
 
 import com.smotrilka.DTOs.RegisterRequest;
 import com.smotrilka.DTOs.LinkRequest;
+import com.smotrilka.DTOs.SearchResponse;
 
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -23,22 +25,32 @@ public class ApiController {
     private final Logger log = LoggerFactory.getLogger(getClass());
 
     @PostMapping("/favorites/add")
-    public ResponseEntity<?> addFavorite(@RequestParam int userId, @RequestParam int linkId) {
-        boolean added = db.addFavorite(userId, linkId);
+    public ResponseEntity<?> addFavorite(
+            @RequestParam String login,
+            @RequestParam String password,
+            @RequestParam int linkId) {
+
+        boolean added = db.addFavorite(login, password, linkId);
+
         if (added) {
             return ResponseEntity.ok("Link added to favorites");
         } else {
-            return ResponseEntity.badRequest().body("Link already in favorites or invalid data");
+            return ResponseEntity.badRequest().body("Invalid credentials or link already in favorites");
         }
     }
 
     @DeleteMapping("/favorites/remove")
-    public ResponseEntity<?> removeFavorite(@RequestParam int userId, @RequestParam int linkId) {
-        boolean removed = db.removeFavorite(userId, linkId);
+    public ResponseEntity<?> removeFavorite(
+            @RequestParam String login,
+            @RequestParam String password,
+            @RequestParam int linkId) {
+
+        boolean removed = db.removeFavorite(login, password, linkId);
+
         if (removed) {
             return ResponseEntity.ok("Link removed from favorites");
         } else {
-            return ResponseEntity.badRequest().body("Link not found in favorites");
+            return ResponseEntity.badRequest().body("Invalid credentials or link not found in favorites");
         }
     }
 

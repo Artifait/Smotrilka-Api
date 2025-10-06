@@ -100,20 +100,61 @@ public class DatabaseJdbc {
     }
 
     @Transactional
-    public boolean addFavorite(int userId, int linkId) {
+    public boolean addFavorite(String login, String password, int linkId) {
         try {
-            String sql = "INSERT INTO favorite_links (user_id, link_id) VALUES (?, ?)";
-            jdbc.update(sql, userId, linkId);
+            Integer userId = jdbc.queryForObject(
+                    "SELECT id FROM users WHERE login = ? AND password = ?",
+                    Integer.class,
+                    login, password
+            );
+
+            if (userId == null) {
+                return false;
+            }
+
+            Integer exists = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM favorite_links WHERE user_id = ? AND link_id = ?",
+                    Integer.class,
+                    userId, linkId
+            );
+
+            if (exists != null && exists > 0) {
+                return false;
+            }
+
+            jdbc.update("INSERT INTO favorite_links (user_id, link_id) VALUES (?, ?)", userId, linkId);
+
             return true;
         } catch (Exception e) {
+            e.printStackTrace();
             return false;
         }
     }
 
+
     @Transactional
-    public boolean removeFavorite(int userId, int linkId) {
-        String sql = "DELETE FROM favorite_links WHERE user_id = ? AND link_id = ?";
-        return jdbc.update(sql, userId, linkId) > 0;
+    public boolean removeFavorite(String login, String password, int linkId) {
+        try {
+            Integer userId = jdbc.queryForObject(
+                    "SELECT id FROM users WHERE login = ? AND password = ?",
+                    Integer.class,
+                    login, password
+            );
+
+            if (userId == null) {
+                return false;
+            }
+
+            int rows = jdbc.update(
+                    "DELETE FROM favorite_links WHERE user_id = ? AND link_id = ?",
+                    userId, linkId
+            );
+
+            return rows > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     @Transactional(readOnly = true)
