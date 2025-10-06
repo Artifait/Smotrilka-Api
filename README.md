@@ -47,3 +47,10 @@ curl -i -X POST http://localhost:9090/react -H "Content-Type: application/json" 
 ```commandline
 curl -i -X POST http://localhost:9090/react -H "Content-Type: application/json" -d "{\"login\":\"u1\",\"password\":\"p1\",\"linkId\":1,\"reaction\":0}"
 ```
+
+
+###Добавление ссылки в избранное:
+```commandline
+curl -i -X POST "http://localhost:9090/favorites/add" \-H "Content-Type: application/json" \-d "{\"login\":\"u1\",\"password\":\"p1\",\"linkId\":1}"
+```
+
