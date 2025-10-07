@@ -3,6 +3,7 @@ package com.smotrilka.controller;
 import com.smotrilka.DTOs.RegisterRequest;
 import com.smotrilka.DTOs.LinkRequest;
 import com.smotrilka.DTOs.SearchResponse;
+import com.smotrilka.DTOs.CommentRequest;
 
 import java.util.List;
 import org.slf4j.Logger;
@@ -108,6 +109,22 @@ public class ApiController {
         }
     }
 
+    @PostMapping("/comment")
+    public ResponseEntity<?> addComment(@RequestBody CommentRequest request) {
+        if (request.getLogin() == null || request.getPassword() == null ||
+                request.getLinkId() == null || request.getText() == null ||
+                request.getText().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("All fields required: login, password, linkId, text");
+        }
+
+        boolean ok = db.addComment(request);
+
+        if (!ok) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid credentials or link not found");
+        }
+
+        return ResponseEntity.ok("Comment added");
+    }
 
     @PostMapping("/react")
     public ResponseEntity<?> react(@RequestBody ReactionRequest request) {

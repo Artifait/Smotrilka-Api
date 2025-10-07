@@ -5,6 +5,7 @@ import com.smotrilka.DTOs.LinkRequest;
 import com.smotrilka.DTOs.RegisterRequest;
 import com.smotrilka.DTOs.ReactionRequest;
 import com.smotrilka.DTOs.SearchResponse;
+import com.smotrilka.DTOs.CommentRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -98,6 +99,56 @@ public class DatabaseJdbc {
 
         return results;
     }
+
+    @Transactional
+    public boolean addComment(CommentRequest request) {
+        try {
+            if (request == null ||
+                    request.getLogin() == null ||
+                    request.getPassword() == null ||
+                    request.getLinkId() == null ||
+                    request.getText() == null ||
+                    request.getText().trim().isEmpty()) {
+                throw new IllegalArgumentException("All fields required");
+            }
+
+            List<Integer> ulist = jdbc.query(
+                    "SELECT id FROM users WHERE login = ? AND password = ?",
+                    (rs, rowNum) -> rs.getInt("id"),
+                    request.getLogin(), request.getPassword()
+            );
+
+            if (ulist.isEmpty()) {
+                log.warn("Unauthorized comment attempt by {}", request.getLogin());
+                return false;
+            }
+
+            Integer userId = ulist.get(0);
+
+            Integer linkCount = jdbc.queryForObject(
+                    "SELECT COUNT(1) FROM links WHERE id = ?",
+                    Integer.class, request.getLinkId()
+            );
+            if (linkCount == null || linkCount == 0) {
+                log.warn("Link not found for comment, id={}", request.getLinkId());
+                return false;
+            }
+
+            jdbc.update("""
+            INSERT INTO comments (link_id, user_id, text)
+            VALUES (?, ?, ?)
+        """, request.getLinkId(), userId, request.getText().trim());
+
+            log.info("Comment added by {} to link {}", request.getLogin(), request.getLinkId());
+            return true;
+
+        } catch (Exception e) {
+            log.error("addComment failed for user {}",
+                    request == null ? "null" : request.getLogin(), e);
+            throw e;
+        }
+    }
+
 
     @Transactional
     public boolean addFavorite(String login, String password, int linkId) {
