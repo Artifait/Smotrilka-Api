@@ -4,6 +4,7 @@ import com.smotrilka.DTOs.RegisterRequest;
 import com.smotrilka.DTOs.LinkRequest;
 import com.smotrilka.DTOs.SearchResponse;
 import com.smotrilka.DTOs.CommentRequest;
+import com.smotrilka.DTOs.StickerRequest;
 
 import java.util.List;
 import org.slf4j.Logger;
@@ -122,8 +123,30 @@ public class ApiController {
         if (!ok) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid credentials or link not found");
         }
-
+//
         return ResponseEntity.ok("Comment added");
+    }
+
+    @PostMapping("/sticker/add")
+    public ResponseEntity<?> addSticker(@RequestBody StickerRequest request) {
+        if (request.getLogin() == null || request.getPassword() == null ||
+                request.getLinkId() == null || request.getKey() == null || request.getKey().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("Fields required: login, password, linkId, key");
+        }
+
+        boolean ok = db.addSticker(request);
+
+        if (!ok) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid credentials or link not found");
+        }
+
+        return ResponseEntity.ok("Sticker added or updated");
+    }
+
+    @GetMapping("/stickers")
+    public ResponseEntity<?> getStickers(@RequestParam int linkId) {
+        var stickers = db.getStickers(linkId);
+        return ResponseEntity.ok(stickers);
     }
 
     @PostMapping("/react")

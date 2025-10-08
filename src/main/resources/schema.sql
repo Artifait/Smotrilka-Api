@@ -55,3 +55,12 @@ CREATE TABLE IF NOT EXISTS comments (
     FOREIGN KEY (link_id) REFERENCES links(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS link_metadata (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    link_id INTEGER NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT,
+    FOREIGN KEY (link_id) REFERENCES links(id) ON DELETE CASCADE,
+    CONSTRAINT ux_link_meta UNIQUE (link_id, key)
+);

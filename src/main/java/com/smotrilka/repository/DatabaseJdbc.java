@@ -1,6 +1,6 @@
 package com.smotrilka.repository;
 
-
+import com.smotrilka.DTOs.StickerRequest;
 import com.smotrilka.DTOs.LinkRequest;
 import com.smotrilka.DTOs.RegisterRequest;
 import com.smotrilka.DTOs.ReactionRequest;
@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.Map;
 
 import java.util.List;
 
@@ -181,7 +182,81 @@ public class DatabaseJdbc {
             return false;
         }
     }
+    @Transactional
+    public boolean addSticker(StickerRequest request) {
+        try {
+            if (request == null ||
+                    request.getLogin() == null ||
+                    request.getPassword() == null ||
+                    request.getLinkId() == null ||
+                    request.getKey() == null || request.getKey().trim().isEmpty()) {
+                throw new IllegalArgumentException("All fields required except value");
+            }
 
+            // Проверка пользователя
+            List<Integer> ulist = jdbc.query(
+                    "SELECT id FROM users WHERE login = ? AND password = ?",
+                    (rs, rowNum) -> rs.getInt("id"),
+                    request.getLogin(), request.getPassword()
+            );
+
+            if (ulist.isEmpty()) {
+                log.warn("Unauthorized sticker attempt by {}", request.getLogin());
+                return false;
+            }
+
+            // Проверка ссылки
+            Integer linkCount = jdbc.queryForObject(
+                    "SELECT COUNT(1) FROM links WHERE id = ?",
+                    Integer.class, request.getLinkId()
+            );
+            if (linkCount == null || linkCount == 0) {
+                log.warn("Link not found for sticker, id={}", request.getLinkId());
+                return false;
+            }
+
+            // Проверяем, есть ли уже такой стикер
+            Integer count = jdbc.queryForObject(
+                    "SELECT COUNT(1) FROM link_metadata WHERE link_id = ? AND key = ?",
+                    Integer.class, request.getLinkId(), request.getKey().trim()
+            );
+
+            if (count != null && count > 0) {
+                // Обновляем значение
+                jdbc.update("UPDATE link_metadata SET value = ? WHERE link_id = ? AND key = ?",
+                        request.getValue(), request.getLinkId(), request.getKey().trim());
+                log.info("Sticker '{}' updated for link {}", request.getKey(), request.getLinkId());
+            } else {
+                // Добавляем новый
+                jdbc.update("INSERT INTO link_metadata (link_id, key, value) VALUES (?, ?, ?)",
+                        request.getLinkId(), request.getKey().trim(), request.getValue());
+                log.info("Sticker '{}' added for link {}", request.getKey(), request.getLinkId());
+            }
+
+            return true;
+
+        } catch (Exception e) {
+            log.error("addSticker failed for user {}", request == null ? "null" : request.getLogin(), e);
+            throw e;
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, String>> getStickers(int linkId) {
+        try {
+            return jdbc.query(
+                    "SELECT key, value FROM link_metadata WHERE link_id = ?",
+                    (rs, rowNum) -> Map.of(
+                            "key", rs.getString("key"),
+                            "value", rs.getString("value")
+                    ),
+                    linkId
+            );
+        } catch (Exception e) {
+            log.error("getStickers failed for link {}", linkId, e);
+            throw e;
+        }
+    }
 
     @Transactional
     public boolean removeFavorite(String login, String password, int linkId) {
@@ -207,6 +282,8 @@ public class DatabaseJdbc {
             return false;
         }
     }
+
+
 
     @Transactional(readOnly = true)
     public List<SearchResponse> getFavorites(int userId) {
