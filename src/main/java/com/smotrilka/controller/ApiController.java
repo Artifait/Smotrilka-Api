@@ -19,7 +19,7 @@ import com.smotrilka.repository.DatabaseJdbc;
 
 import java.util.Map;
 
-
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping
 public class ApiController {
@@ -91,6 +91,7 @@ public class ApiController {
         return ok ? ResponseEntity.ok("User registered")
                 : ResponseEntity.status(409).body("User already exists");
     }
+
     @PostMapping("/check-username")
     public ResponseEntity<?> checkUsername(@RequestParam String login) {
         boolean taken = db.isUsernameTaken(login);
