@@ -26,6 +26,16 @@ public class ApiController {
     private final DatabaseJdbc db;
     private final Logger log = LoggerFactory.getLogger(getClass());
 
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestParam String login, @RequestParam String password) {
+        boolean ok = db.login(login, password);
+        if (ok) {
+            return ResponseEntity.ok("Login successful");
+        } else {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+        }
+    }
+
     @PostMapping("/favorites/add")
     public ResponseEntity<?> addFavorite(
             @RequestParam String login,

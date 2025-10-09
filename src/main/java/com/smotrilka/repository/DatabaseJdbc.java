@@ -46,6 +46,32 @@ public class DatabaseJdbc {
     }
 
     @Transactional(readOnly = true)
+    public boolean login(String login, String password) {
+        try {
+            if (login == null || password == null ||
+                    login.trim().isEmpty() || password.trim().isEmpty()) {
+                log.warn("login() called with empty credentials");
+                return false;
+            }
+
+            Integer count = jdbc.queryForObject(
+                    "SELECT COUNT(1) FROM users WHERE login = ? AND password = ?",
+                    Integer.class,
+                    login, password
+            );
+
+            boolean exists = count != null && count > 0;
+            log.info("Login attempt for '{}': {}", login, exists ? "success" : "failed");
+            return exists;
+
+        } catch (Exception e) {
+            log.error("login() failed for user {}", login, e);
+            throw e;
+        }
+    }
+
+
+    @Transactional(readOnly = true)
     public List<SearchResponse> searchLinks(String query) {
         String q = query == null ? "" : query.trim().toLowerCase();
         if (q.isEmpty()) {
