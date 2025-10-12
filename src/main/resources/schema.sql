@@ -11,7 +11,9 @@ CREATE TABLE IF NOT EXISTS links (
     name TEXT NOT NULL,
     link TEXT NOT NULL,
     description TEXT,
-    rating INTEGER NOT NULL DEFAULT 0
+    rating INTEGER NOT NULL DEFAULT 0,
+    created_by INTEGER,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS link_tags (
@@ -36,7 +38,7 @@ CREATE TABLE IF NOT EXISTS reactions (
     CONSTRAINT ux_user_link UNIQUE(user_id, link_id),
     FOREIGN KEY(link_id) REFERENCES links(id) ON DELETE CASCADE,
     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-    );
+);
 
 CREATE TABLE IF NOT EXISTS favorite_links (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,7 +47,7 @@ CREATE TABLE IF NOT EXISTS favorite_links (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (link_id) REFERENCES links(id) ON DELETE CASCADE,
     UNIQUE (user_id, link_id)
-    );
+);
 
 CREATE TABLE IF NOT EXISTS comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,10 +60,10 @@ CREATE TABLE IF NOT EXISTS comments (
 );
 
 CREATE TABLE IF NOT EXISTS link_metadata (
-     id INTEGER PRIMARY KEY AUTOINCREMENT,
-     link_id INTEGER NOT NULL,
-     key TEXT NOT NULL,
-     value TEXT,
-     FOREIGN KEY (link_id) REFERENCES links(id) ON DELETE CASCADE,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    link_id INTEGER NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT,
+    FOREIGN KEY (link_id) REFERENCES links(id) ON DELETE CASCADE,
     CONSTRAINT ux_link_meta UNIQUE (link_id, key)
 );
