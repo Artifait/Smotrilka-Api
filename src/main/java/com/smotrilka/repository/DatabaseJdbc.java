@@ -6,6 +6,7 @@ import com.smotrilka.DTOs.RegisterRequest;
 import com.smotrilka.DTOs.ReactionRequest;
 import com.smotrilka.DTOs.SearchResponse;
 import com.smotrilka.DTOs.CommentRequest;
+import com.smotrilka.DTOs.LinkFullInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -44,6 +45,49 @@ public class DatabaseJdbc {
             throw e;
         }
     }
+
+    @Transactional(readOnly = true)
+    public List<SearchResponse> getFavoritess(String login, String password) {
+        try {
+            Integer userId = jdbc.queryForObject(
+                    "SELECT id FROM users WHERE login = ? AND password = ?",
+                    Integer.class, login, password
+            );
+
+            if (userId == null) {
+                return null;
+            }
+
+            String sql = """
+        SELECT l.id, l.name, l.link, l.rating
+        FROM links l
+        JOIN favorite_links f ON f.link_id = l.id
+        WHERE f.user_id = ?
+        """;
+
+            return jdbc.query(sql, (rs, rowNum) -> {
+                int linkId = rs.getInt("id");
+                List<String> tags = jdbc.query(
+                        "SELECT t.type_name FROM link_tags t " +
+                                "JOIN link_tag_relations r ON r.type_id = t.id " +
+                                "WHERE r.link_id = ?",
+                        (r2, i2) -> r2.getString("type_name"), linkId
+                );
+                return new SearchResponse(
+                        linkId,
+                        rs.getString("name"),
+                        rs.getString("link"),
+                        rs.getInt("rating"),
+                        tags
+                );
+            }, userId);
+        } catch (Exception e) {
+            log.error("getFavoritesByLogin failed for {}", login, e);
+            throw e;
+        }
+    }
+
+
 
     @Transactional(readOnly = true)
     public boolean login(String login, String password) {
@@ -126,6 +170,87 @@ public class DatabaseJdbc {
 
         return results;
     }
+
+
+    @Transactional(readOnly = true)
+    public LinkFullInfo getFullLinkInfo(int linkId) {
+        try {
+            var link = jdbc.queryForMap("""
+            SELECT l.id, l.name, l.link, l.description, l.rating, u.login AS creator_login
+            FROM links l
+            LEFT JOIN users u ON u.id = l.created_by
+            WHERE l.id = ?
+        """, linkId);
+
+            if (link == null || link.isEmpty()) {
+                return null;
+            }
+
+            LinkFullInfo info = new LinkFullInfo();
+            info.id = (int) link.get("id");
+            info.name = (String) link.get("name");
+            info.link = (String) link.get("link");
+            info.description = (String) link.get("description");
+            info.rating = (int) link.get("rating");
+            info.creatorLogin = (String) link.get("creator_login");
+
+            info.tags = jdbc.query("""
+            SELECT t.type_name
+            FROM link_tags t
+            JOIN link_tag_relations r ON r.type_id = t.id
+            WHERE r.link_id = ?
+        """, (rs, rowNum) -> rs.getString("type_name"), linkId);
+
+            info.comments = jdbc.query("""
+            SELECT c.text, c.created_at, u.login AS author
+            FROM comments c
+            JOIN users u ON u.id = c.user_id
+            WHERE c.link_id = ?
+            ORDER BY c.created_at DESC
+        """, (rs, rowNum) -> Map.of(
+                    "author", rs.getString("author"),
+                    "text", rs.getString("text"),
+                    "created_at", rs.getString("created_at")
+            ), linkId);
+
+            info.favorites = jdbc.query("""
+            SELECT u.id AS user_id, u.login
+            FROM favorite_links f
+            JOIN users u ON u.id = f.user_id
+            WHERE f.link_id = ?
+        """, (rs, rowNum) -> Map.of(
+                    "user_id", rs.getInt("user_id"),
+                    "login", rs.getString("login")
+            ), linkId);
+
+            info.reactions = jdbc.query("""
+            SELECT u.id AS user_id, u.login, r.reaction
+            FROM reactions r
+            JOIN users u ON u.id = r.user_id
+            WHERE r.link_id = ?
+        """, (rs, rowNum) -> Map.of(
+                    "user_id", rs.getInt("user_id"),
+                    "login", rs.getString("login"),
+                    "reaction", rs.getInt("reaction")
+            ), linkId);
+
+            info.metadata = jdbc.query("""
+            SELECT key, value FROM link_metadata WHERE link_id = ?
+        """, (rs, rowNum) -> Map.of(
+                    "key", rs.getString("key"),
+                    "value", rs.getString("value")
+            ), linkId);
+
+            log.info("Full link info fetched for link {}", linkId);
+            return info;
+
+        } catch (Exception e) {
+            log.error("getFullLinkInfo failed for link {}", linkId, e);
+            throw e;
+        }
+    }
+
+
 
     @Transactional
     public boolean addComment(CommentRequest request) {

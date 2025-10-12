@@ -5,6 +5,7 @@ import com.smotrilka.DTOs.LinkRequest;
 import com.smotrilka.DTOs.SearchResponse;
 import com.smotrilka.DTOs.CommentRequest;
 import com.smotrilka.DTOs.StickerRequest;
+import com.smotrilka.DTOs.LinkFullInfo;
 
 import java.util.List;
 import org.slf4j.Logger;
@@ -67,10 +68,15 @@ public class ApiController {
     }
 
     @GetMapping("/favorites")
-    public ResponseEntity<?> getFavorites(@RequestParam int userId) {
-        var favorites = db.getFavorites(userId);
+    public ResponseEntity<?> getFavorites(@RequestParam String login, @RequestParam String password) {
+        var favorites = db.getFavoritess(login, password);
+        if (favorites == null) {
+            return ResponseEntity.status(401).body("Invalid login or password");
+        }
         return ResponseEntity.ok(favorites);
     }
+
+
     public ApiController(DatabaseJdbc db) {
         this.db = db;
     }
@@ -119,6 +125,15 @@ public class ApiController {
             log.warn("Invalid credentials for user '{}'", request.getLogin());
             return ResponseEntity.status(403).body("Invalid credentials");
         }
+    }
+
+    @GetMapping("/link/full")
+    public ResponseEntity<?> getFullLinkInfo(@RequestParam int linkId) {
+        var info = db.getFullLinkInfo(linkId);
+        if (info == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Link not found");
+        }
+        return ResponseEntity.ok(info);
     }
 
     @PostMapping("/comment")
