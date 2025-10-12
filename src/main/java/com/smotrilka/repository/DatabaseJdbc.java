@@ -213,44 +213,13 @@ public class DatabaseJdbc {
                     "created_at", rs.getString("created_at")
             ), linkId);
 
-            info.favorites = jdbc.query("""
-            SELECT u.id AS user_id, u.login
-            FROM favorite_links f
-            JOIN users u ON u.id = f.user_id
-            WHERE f.link_id = ?
-        """, (rs, rowNum) -> Map.of(
-                    "user_id", rs.getInt("user_id"),
-                    "login", rs.getString("login")
-            ), linkId);
-
-            info.reactions = jdbc.query("""
-            SELECT u.id AS user_id, u.login, r.reaction
-            FROM reactions r
-            JOIN users u ON u.id = r.user_id
-            WHERE r.link_id = ?
-        """, (rs, rowNum) -> Map.of(
-                    "user_id", rs.getInt("user_id"),
-                    "login", rs.getString("login"),
-                    "reaction", rs.getInt("reaction")
-            ), linkId);
-
-            info.metadata = jdbc.query("""
-            SELECT key, value FROM link_metadata WHERE link_id = ?
-        """, (rs, rowNum) -> Map.of(
-                    "key", rs.getString("key"),
-                    "value", rs.getString("value")
-            ), linkId);
-
             log.info("Full link info fetched for link {}", linkId);
             return info;
-
         } catch (Exception e) {
             log.error("getFullLinkInfo failed for link {}", linkId, e);
             throw e;
         }
     }
-
-
 
     @Transactional
     public boolean addComment(CommentRequest request) {

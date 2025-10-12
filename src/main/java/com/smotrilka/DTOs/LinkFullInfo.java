@@ -12,7 +12,4 @@ public class LinkFullInfo {
     public String creatorLogin;
     public List<String> tags;
     public List<Map<String, Object>> comments;
-    public List<Map<String, Object>> favorites;
-    public List<Map<String, Object>> reactions;
-    public List<Map<String, String>> metadata;
 }
