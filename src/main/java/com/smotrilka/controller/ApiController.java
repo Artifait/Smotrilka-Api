@@ -106,26 +106,37 @@ public class ApiController {
 
     @PostMapping("/link")
     public ResponseEntity<?> addLink(@RequestBody LinkRequest request) {
-        if (request.getLogin() == null || request.getPassword() == null ||
-                request.getName() == null || request.getLink() == null ||
-                request.getTags() == null || request.getTags().isEmpty()) {
-            return ResponseEntity.badRequest().body("All fields required (login, password, name, link, tags)");
-        }
+        try {
+            if (request.getLogin() == null || request.getPassword() == null ||
+                    request.getName() == null || request.getLink() == null ||
+                    request.getTags() == null || request.getTags().isEmpty()) {
+                return ResponseEntity.badRequest().body("All fields required: login, password, name, link, tags");
+            }
 
-        if (request.getTags().size() > 10) {
-            return ResponseEntity.badRequest().body("Maximum 10 tags allowed");
-        }
+            if (request.getTags().size() > 10) {
+                return ResponseEntity.badRequest().body("Maximum 10 tags allowed");
+            }
 
-        boolean ok = db.addLink(request);
+            boolean ok = db.addLink(request);
 
-        if (ok) {
-            log.info("Link '{}' added successfully by user '{}'", request.getName(), request.getLogin());
-            return ResponseEntity.ok("Link added");
-        } else {
-            log.warn("Invalid credentials for user '{}'", request.getLogin());
-            return ResponseEntity.status(403).body("Invalid credentials");
+            if (ok) {
+                log.info("Link '{}' successfully added by '{}'", request.getName(), request.getLogin());
+                return ResponseEntity.ok("Link added successfully");
+            } else {
+                log.warn("Invalid credentials for user '{}'", request.getLogin());
+                return ResponseEntity.status(403).body("Invalid login or password");
+            }
+
+        } catch (IllegalArgumentException e) {
+            log.warn("⚠Bad request for '{}': {}", request.getLogin(), e.getMessage());
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+
+        } catch (Exception e) {
+            log.error("Failed to add link '{}'", request.getName(), e);
+            return ResponseEntity.internalServerError().body("Server error while adding link");
         }
     }
+
 
     @GetMapping("/link/full")
     public ResponseEntity<?> getFullLinkInfo(@RequestParam int linkId) {

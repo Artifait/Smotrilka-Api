@@ -448,6 +448,7 @@ public class DatabaseJdbc {
                 log.warn("Invalid credentials for user {}", request.getLogin());
                 return false;
             }
+
             Integer userId = ulist.get(0);
 
             List<String> tags = request.getTags();
@@ -459,8 +460,8 @@ public class DatabaseJdbc {
             }
 
             jdbc.update(
-                    "INSERT INTO links(name, link, description, rating) VALUES(?, ?, ?, 0)",
-                    request.getName(), request.getLink(), request.getDescription()
+                    "INSERT INTO links(name, link, description, rating, created_by) VALUES(?, ?, ?, 0, ?)",
+                    request.getName(), request.getLink(), request.getDescription(), userId
             );
 
             Integer linkId = jdbc.queryForObject("SELECT last_insert_rowid()", Integer.class);
@@ -483,11 +484,15 @@ public class DatabaseJdbc {
                     tagId = tagIds.get(0);
                 }
 
-                jdbc.update("INSERT OR IGNORE INTO link_tag_relations(link_id, type_id) VALUES(?, ?)",
-                        linkId, tagId);
+                jdbc.update(
+                        "INSERT OR IGNORE INTO link_tag_relations(link_id, type_id) VALUES(?, ?)",
+                        linkId, tagId
+                );
             }
 
-            log.info("Link '{}' added by {} with {} tag(s)", request.getName(), request.getLogin(), tags.size());
+            log.info("Link '{}' added by {} (userId={}) with {} tag(s)",
+                    request.getName(), request.getLogin(), userId, tags.size());
+
             return true;
 
         } catch (Exception e) {
@@ -495,6 +500,7 @@ public class DatabaseJdbc {
             throw e;
         }
     }
+
 
     public boolean isUsernameTaken(String login) {
         try {
